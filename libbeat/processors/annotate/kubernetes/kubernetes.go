@@ -196,7 +196,7 @@ func (k kubernetesAnnotator) Run(event common.MapStr) (common.MapStr, error) {
 func (k kubernetesAnnotator) String() string { return "kubernetes" }
 
 func validate(config kubeAnnotatorConfig) error {
-	if config.KubeConfig == "" {
+	if !config.InCluster && config.KubeConfig == "" {
 		return errors.New("`kube_config` path can't be empty when in_cluster is set to false")
 	}
 	return nil

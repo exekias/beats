@@ -54,7 +54,7 @@ func newLogsPathMatcher(cfg common.Config) (kubernetes.Matcher, error) {
 	config := struct {
 		LogsPath string `config:"logs_path"`
 	}{
-		LogsPath: "/var/lib/docker/containers/",
+		LogsPath: "/var/log/containers",
 	}
 
 	err := cfg.Unpack(&config)
@@ -77,8 +77,8 @@ func (f *LogPathMatcher) MetadataIndex(event common.MapStr) string {
 		logp.Debug("kubernetes", "Incoming source value: ", source)
 		cid := ""
 		if strings.Contains(source, f.LogsPath) {
-			//Docker container is 64 chars in length
-			cid = source[len(f.LogsPath) : len(f.LogsPath)+64]
+			// Docker container is 64 chars in length + .log
+			cid = source[len(source)-68 : len(source)-4]
 		}
 		logp.Debug("kubernetes", "Using container id: ", cid)
 

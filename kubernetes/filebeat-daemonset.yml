@@ -1,0 +1,46 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  labels:
+    app: filebeat
+spec:
+  template:
+    metadata:
+      labels:
+        name: filebeat
+    spec:
+      containers:
+        - resources:
+            requests:
+              cpu: 0.15
+          image: eu.gcr.io/carlosperez-163008/filebeat
+          name: filebeat
+          command:
+            - /usr/share/filebeat/filebeat
+            - -e
+            - -path.config
+            - /etc/filebeat/
+          volumeMounts:
+            - name: filebeat-config
+              mountPath: /etc/filebeat
+              readOnly: true
+            - name: varlogcontainers
+              mountPath: /var/log/containers
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      volumes:
+        - name: filebeat-config
+          configMap:
+            name: beats-config
+            items:
+            - key: filebeat.yml
+              path: filebeat.yml
+        - name: varlogcontainers
+          hostPath:
+            path: /var/log/containers
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers

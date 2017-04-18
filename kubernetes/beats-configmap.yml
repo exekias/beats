@@ -1,0 +1,46 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  creationTimestamp: 2017-04-14T19:14:38Z
+  name: beats-config
+  namespace: default
+data:
+  metricbeat.yml: |-
+    metricbeat.modules:
+    - module: kubelet
+      hosts: ["localhost:10255"]
+      metricsets:
+        - container
+        - node
+        - pod
+        - system
+        - volume
+
+    output.elasticsearch:
+      hosts: ["b7d4806b42bed167fee600d8d97f0c4b.eu-west-1.aws.found.io:9243"]
+      template.fields: /usr/share/metricbeat/fields.yml
+      protocol: https
+      username: elastic
+      password: tmbF31QxCCO0RWdskiRBrnrF
+
+  filebeat.yml: |-
+    filebeat.prospectors:
+    - input_type: log
+      symlinks: true
+      json.keys_under_root: true
+      json.add_error_key: true
+      json.message_key: log
+      paths:
+        - /var/log/containers/*.log
+
+    output.elasticsearch:
+      hosts: ["b7d4806b42bed167fee600d8d97f0c4b.eu-west-1.aws.found.io:9243"]
+      template.fields: /usr/share/filebeat/fields.yml
+      protocol: https
+      username: elastic
+      password: tmbF31QxCCO0RWdskiRBrnrF
+
+    processors:
+      - kubernetes:
+          in_cluster: true
+          namespace: default

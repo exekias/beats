@@ -1,0 +1,39 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: metricbeat
+  labels:
+    app: metricbeat
+spec:
+  template:
+    metadata:
+      labels:
+        name: metricbeat
+    spec:
+      hostPID: true
+      hostIPC: true
+      hostNetwork: true
+      containers:
+        - resources:
+            requests:
+              cpu: 0.15
+          securityContext:
+            privileged: true
+          image: eu.gcr.io/carlosperez-163008/metricbeat
+          name: metricbeat
+          command:
+            - /usr/share/metricbeat/metricbeat
+            - -e
+            - -path.config
+            - /etc/metricbeat/
+          volumeMounts:
+            - name: metricbeat-config
+              mountPath: /etc/metricbeat
+              readOnly: true
+      volumes:
+        - name: metricbeat-config
+          configMap:
+            name: beats-config
+            items:
+            - key: metricbeat.yml
+              path: metricbeat.yml
