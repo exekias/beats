@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: 2017-04-18T16:26:53Z
+  labels:
+    app: nginx
+    foo: bar
+  name: nginx-deployment
+  namespace: default
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: nginx
+    foo: bar
+  sessionAffinity: None
+  type: LoadBalancer
