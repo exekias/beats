@@ -1,14 +1,17 @@
-FROM golang:1.7.4
-MAINTAINER Nicolas Ruflin <ruflin@elastic.co>
+FROM ubuntu:16.04
+MAINTAINER Elastic Docker Team <docker@elastic.co>
 
-RUN set -x && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-         netcat python-pip virtualenv && \
-    apt-get clean
+RUN apt-get update
+RUN apt-get install -y ca-certificates
 
-# Setup work environment
-ENV FILEBEAT_PATH /go/src/github.com/elastic/beats/filebeat
+RUN mkdir -p /usr/share/filebeat
 
-RUN mkdir -p $FILEBEAT_PATH/build/coverage
-WORKDIR $FILEBEAT_PATH
+COPY filebeat /usr/share/filebeat
+
+COPY filebeat.yml /usr/share/filebeat/
+COPY fields.yml /usr/share/filebeat/
+COPY module /usr/share/filebeat/module
+
+WORKDIR /usr/share/filebeat
+
+ENTRYPOINT ["./filebeat", "-e"]

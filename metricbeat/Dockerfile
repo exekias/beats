@@ -1,17 +1,16 @@
-FROM golang:1.7.4
-MAINTAINER Nicolas Ruflin <ruflin@elastic.co>
+FROM ubuntu:16.04
+MAINTAINER Elastic Docker Team <docker@elastic.co>
 
-RUN set -x && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-         netcat python-pip virtualenv && \
-    apt-get clean
+RUN apt-get update
+RUN apt-get install -y ca-certificates
 
-# Setup work environment
-ENV METRICBEAT_PATH /go/src/github.com/elastic/beats/metricbeat
+RUN mkdir -p /usr/share/metricbeat
 
-RUN mkdir -p $METRICBEAT_PATH/build/coverage
-WORKDIR $METRICBEAT_PATH
+COPY metricbeat /usr/share/metricbeat/
 
-# Add healthcheck for docker/healthcheck metricset to check during testing
-HEALTHCHECK CMD exit 0
+COPY metricbeat.yml /usr/share/metricbeat/
+COPY fields.yml /usr/share/metricbeat/
+
+WORKDIR /usr/share/metricbeat
+
+ENTRYPOINT ["./metricbeat", "-e"]
