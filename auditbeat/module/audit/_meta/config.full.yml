@@ -1,5 +1,4 @@
 - module: audit
-  enabled: false
   metricsets: ["kernel"]
   kernel.resolve_ids: true
   kernel.failure_mode: silent
