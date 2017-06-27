@@ -67,7 +67,7 @@ func (w *Watcher) watchEvents() {
 		if err != nil {
 			//watch events failures should be logged and gracefully failed over as metadata retrieval
 			//should never stop.
-			logp.Err("kubernetes: Watching API eror %v", err)
+			logp.Err("kubernetes: Watching API error %v", err)
 			// Sleep for a second to prevent API server from being bombarded
 			// API server could be down
 			time.Sleep(time.Second)
