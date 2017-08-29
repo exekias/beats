@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/beats/libbeat/logp"
 	"github.com/elastic/beats/libbeat/monitoring"
 	"github.com/elastic/beats/libbeat/paths"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -54,6 +55,7 @@ type Runner interface {
 type Reloader struct {
 	registry *Registry
 	config   DynamicConfig
+	path     string
 	done     chan struct{}
 	wg       sync.WaitGroup
 }
@@ -63,11 +65,58 @@ func NewReloader(cfg *common.Config) *Reloader {
 	config := DefaultDynamicConfig
 	cfg.Unpack(&config)
 
+	path := config.Path
+	if !filepath.IsAbs(path) {
+		path = paths.Resolve(paths.Config, path)
+	}
+
 	return &Reloader{
 		registry: NewRegistry(),
 		config:   config,
+		path:     path,
 		done:     make(chan struct{}),
 	}
+}
+
+// Check configs are valid (only if reload is disabled)
+func (rl *Reloader) Check(runnerFactory RunnerFactory) error {
+	// If config reload is enabled we ignore errors (as they may be fixed afterwards)
+	if rl.config.Reload.Enabled {
+		return nil
+	}
+
+	debugf("Checking module configs from: %s", rl.path)
+	gw := NewGlobWatcher(rl.path)
+
+	files, _, err := gw.Scan()
+	if err != nil {
+		return errors.Wrap(err, "fetching config files")
+	}
+
+	// Load all config objects
+	configs := []*common.Config{}
+	for _, file := range files {
+		c, err := LoadList(file)
+		if err != nil {
+			return errors.Wrap(err, "loading config")
+		}
+		configs = append(configs, c...)
+	}
+
+	debugf("Number of module configs found: %v", len(configs))
+
+	// Initialize modules
+	for _, c := range configs {
+		// Only add configs to startList which are enabled
+		if !c.Enabled() {
+			continue
+		}
+		_, err := runnerFactory.Create(c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Run runs the reloader
@@ -80,12 +129,7 @@ func (rl *Reloader) Run(runnerFactory RunnerFactory) {
 	// Stop all running modules when method finishes
 	defer rl.stopRunners(rl.registry.CopyList())
 
-	path := rl.config.Path
-	if !filepath.IsAbs(path) {
-		path = paths.Resolve(paths.Config, path)
-	}
-
-	gw := NewGlobWatcher(path)
+	gw := NewGlobWatcher(rl.path)
 
 	// If reloading is disable, config files should be loaded immidiately
 	if !rl.config.Reload.Enabled {
