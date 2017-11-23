@@ -141,6 +141,7 @@ func (g *GenDefaultMeta) GenerateMetaData(pod *Pod) common.MapStr {
 	meta := common.MapStr{
 		"pod": common.MapStr{
 			"name": pod.Metadata.Name,
+			"ip":   pod.Status.PodIP,
 		},
 		"namespace": pod.Metadata.Namespace,
 	}

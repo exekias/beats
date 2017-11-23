@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/elastic/beats/libbeat/common"
+	"github.com/elastic/beats/libbeat/common/bus"
 	"github.com/elastic/beats/libbeat/logp"
 
 	"github.com/ericchiang/k8s"
@@ -20,6 +21,7 @@ type PodWatcher struct {
 	podQueue            chan *corev1.Pod
 	nodeFilter          k8s.Option
 	lastResourceVersion string
+	bus                 bus.Bus
 	ctx                 context.Context
 	stop                context.CancelFunc
 	annotationCache     annotationCache
@@ -47,6 +49,7 @@ func NewPodWatcher(kubeClient *k8s.Client, indexers *Indexers, syncPeriod, clean
 		lastResourceVersion: "0",
 		ctx:                 ctx,
 		stop:                cancel,
+		bus:                 bus.New("kubernetes"),
 		annotationCache: annotationCache{
 			annotations: make(map[string]common.MapStr),
 			pods:        make(map[string]*Pod),
@@ -139,6 +142,13 @@ func (p *PodWatcher) onPodAdd(pod *Pod) {
 		// un-delete if it's flagged (in case of update or recreation)
 		delete(p.annotationCache.deleted, m.Index)
 	}
+
+	if len(metadata) > 0 {
+		p.bus.Publish(bus.Event{
+			"start": true,
+			"pod":   metadata[0].Data,
+		})
+	}
 }
 
 func (p *PodWatcher) onPodUpdate(pod *Pod) {
@@ -151,6 +161,7 @@ func (p *PodWatcher) onPodUpdate(pod *Pod) {
 }
 
 func (p *PodWatcher) onPodDelete(pod *Pod) {
+	metadata := p.indexers.GetMetadata(pod)
 	p.annotationCache.Lock()
 	defer p.annotationCache.Unlock()
 
@@ -160,6 +171,13 @@ func (p *PodWatcher) onPodDelete(pod *Pod) {
 	now := time.Now()
 	for _, index := range p.indexers.GetIndexes(pod) {
 		p.annotationCache.deleted[index] = now
+	}
+
+	if len(metadata) > 0 {
+		p.bus.Publish(bus.Event{
+			"stop": true,
+			"pod":  metadata[0].Data,
+		})
 	}
 }
 
@@ -244,4 +262,14 @@ func (p *PodWatcher) GetPod(uid string) *Pod {
 func (p *PodWatcher) Stop() {
 	p.stop()
 	close(p.podQueue)
+}
+
+// ListenStart returns a bus listener to receive container started events, with a `container` key holding it
+func (p *PodWatcher) ListenStart() bus.Listener {
+	return p.bus.Subscribe("start")
+}
+
+// ListenStop returns a bus listener to receive container stopped events, with a `container` key holding it
+func (p *PodWatcher) ListenStop() bus.Listener {
+	return p.bus.Subscribe("stop")
 }
