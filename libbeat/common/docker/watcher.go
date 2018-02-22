@@ -178,6 +178,9 @@ func (w *watcher) Start() error {
 
 	for _, c := range containers {
 		w.containers[c.ID] = c
+		if len(c.IPAddresses) > 0 {
+			w.containers[c.IPAddresses[0]] = c
+		}
 		if w.shortID {
 			w.containers[c.ID[:shortIDLen]] = c
 		}
@@ -239,6 +242,9 @@ func (w *watcher) watch() {
 
 					w.Lock()
 					w.containers[event.Actor.ID] = container
+					if len(container.IPAddresses) > 0 {
+						w.containers[container.IPAddresses[0]] = container
+					}
 					if w.shortID {
 						w.containers[event.Actor.ID[:shortIDLen]] = container
 					}
