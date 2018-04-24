@@ -19,18 +19,6 @@ func TestGenerateHints(t *testing.T) {
 		result common.MapStr
 	}{
 		{
-			msg: "Hints without host should return nothing",
-			event: bus.Event{
-				"hints": common.MapStr{
-					"metrics": common.MapStr{
-						"module": "prometheus",
-					},
-				},
-			},
-			len:    0,
-			result: common.MapStr{},
-		},
-		{
 			msg: "Empty event hints should return default config",
 			event: bus.Event{
 				"host": "1.2.3.4",

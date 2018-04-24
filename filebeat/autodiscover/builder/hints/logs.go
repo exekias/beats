@@ -48,17 +48,14 @@ func NewLogHints(cfg *common.Config) (autodiscover.Builder, error) {
 		return nil, err
 	}
 
-	return &logHints{config.Key, config.Config, moduleRegistry}, nil
+	return &logHints{config.Key, config.GetConfig(), moduleRegistry}, nil
 }
 
 // Create config based on input hints in the bus event
 func (l *logHints) CreateConfig(event bus.Event) []*common.Config {
 	// Clone original config
 	config, _ := common.NewConfigFrom(l.Config)
-	host, _ := event["host"].(string)
-	if host == "" {
-		return []*common.Config{}
-	}
+	logp.Debug("hints.builder", "Generating config from event: %+v", event)
 
 	var hints common.MapStr
 	hIface, ok := event["hints"]

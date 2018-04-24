@@ -7,7 +7,18 @@ type config struct {
 	Config *common.Config `config:"config"`
 }
 
-func defaultConfig() config {
+func defaultConfig() *config {
+	return &config{
+		Key: "logs",
+	}
+}
+
+func (c *config) GetConfig() *common.Config {
+	if c.Config != nil {
+		return c.Config
+	}
+
+	// default:
 	rawCfg := map[string]interface{}{
 		"type": "docker",
 		"containers": map[string]interface{}{
@@ -17,8 +28,5 @@ func defaultConfig() config {
 		},
 	}
 	cfg, _ := common.NewConfigFrom(rawCfg)
-	return config{
-		Key:    "logs",
-		Config: cfg,
-	}
+	return cfg
 }
