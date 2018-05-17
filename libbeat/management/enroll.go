@@ -28,6 +28,7 @@ func Enroll(beat *instance.Beat, kibanaURL, enrollmentToken string) error {
 	settings := Config{
 		Enabled:     true,
 		AccessToken: accessToken,
+		Kibana:      config,
 	}
 
 	return settings.Save()

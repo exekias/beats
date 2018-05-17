@@ -6,7 +6,8 @@ import (
 	"github.com/elastic/beats/libbeat/outputs"
 )
 
-type kibanaConfig struct {
+// Config used to connect to Kibana
+type Config struct {
 	Protocol string             `config:"protocol"`
 	Host     string             `config:"host"`
 	Path     string             `config:"path"`
@@ -17,7 +18,7 @@ type kibanaConfig struct {
 }
 
 var (
-	defaultKibanaConfig = kibanaConfig{
+	defaultKibanaConfig = Config{
 		Protocol: "http",
 		Host:     "localhost:5601",
 		Path:     "",

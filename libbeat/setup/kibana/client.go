@@ -65,6 +65,11 @@ func NewKibanaClient(cfg *common.Config) (*Client, error) {
 		return nil, err
 	}
 
+	return NewClientWithConfig(&config)
+}
+
+// NewClientWithConfig creates and returns a kibana client using the given config
+func NewClientWithConfig(config *Config) (*Client, error) {
 	kibanaURL, err := common.MakeURL(config.Protocol, config.Path, config.Host, 5601)
 	if err != nil {
 		return nil, fmt.Errorf("invalid Kibana host: %v", err)

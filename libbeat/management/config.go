@@ -6,6 +6,7 @@ import (
 	"github.com/elastic/beats/libbeat/common"
 	"github.com/elastic/beats/libbeat/common/file"
 	"github.com/elastic/beats/libbeat/paths"
+	"github.com/elastic/beats/libbeat/setup/kibana"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -14,17 +15,17 @@ import (
 // Config for central management
 type Config struct {
 	// true when enrolled
-	Enabled bool `config:"xpack.management.enabled"`
+	Enabled bool
 
 	// TODO use beat.Keystore() for access_token
-	AccessToken string `config:"access_token"`
+	AccessToken string
 
-	Kibana *common.Config `config:"xpack.management.kibana"`
+	Kibana *kibana.Config
 
 	Configs []struct {
 		Name   string
 		Config *common.Config
-	} `config:"xpack.management.configs"`
+	}
 }
 
 // Load settings from its source file

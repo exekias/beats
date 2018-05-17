@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/elastic/beats/libbeat/common"
-	"github.com/elastic/beats/libbeat/outputs"
 	"github.com/elastic/beats/libbeat/setup/kibana"
 	"github.com/pkg/errors"
 )
@@ -20,43 +19,30 @@ type Client struct {
 }
 
 // ConfigFromURL generates a full kibana client config from an URL
-func ConfigFromURL(kibanaURL string) (*common.Config, error) {
-	kibana, err := url.Parse(kibanaURL)
+func ConfigFromURL(kibanaURL string) (*kibana.Config, error) {
+	data, err := url.Parse(kibanaURL)
 	if err != nil {
 		return nil, err
 	}
 
 	var username, password string
-	if kibana.User != nil {
-		username = kibana.User.Username()
-		password, _ = kibana.User.Password()
+	if data.User != nil {
+		username = data.User.Username()
+		password, _ = data.User.Password()
 	}
-	config, err := common.NewConfigFrom(struct {
-		Protocol string             `config:"protocol"`
-		Host     string             `config:"host"`
-		Path     string             `config:"path"`
-		Username string             `config:"username"`
-		Password string             `config:"password"`
-		TLS      *outputs.TLSConfig `config:"ssl"`
-		Timeout  time.Duration      `config:"timeout"`
-	}{
-		Protocol: kibana.Scheme,
-		Host:     kibana.Host,
-		Path:     kibana.Path,
+	return &kibana.Config{
+		Protocol: data.Scheme,
+		Host:     data.Host,
+		Path:     data.Path,
 		Username: username,
 		Password: password,
 		Timeout:  defaultTimeout,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return config, err
+	}, nil
 }
 
 // NewClient creates and returns a kibana client
-func NewClient(cfg *common.Config) (*Client, error) {
-	client, err := kibana.NewKibanaClient(cfg)
+func NewClient(cfg *kibana.Config) (*Client, error) {
+	client, err := kibana.NewClientWithConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
