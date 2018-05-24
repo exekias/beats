@@ -130,7 +130,7 @@ func NewClientWithConfig(config *Config) (*Client, error) {
 }
 
 func (conn *Connection) Request(method, extraPath string,
-	params url.Values, body io.Reader) (int, []byte, error) {
+	params url.Values, headers http.Header, body io.Reader) (int, []byte, error) {
 
 	reqURL := addToURL(conn.URL, extraPath, params)
 
@@ -145,6 +145,12 @@ func (conn *Connection) Request(method, extraPath string,
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
+
+	for header, values := range headers {
+		for _, value := range values {
+			req.Header.Add(header, value)
+		}
+	}
 
 	if method != "GET" {
 		req.Header.Set("kbn-version", conn.version)
@@ -184,7 +190,7 @@ func (client *Client) SetVersion() error {
 		Version string `json:"version"`
 	}
 
-	code, result, err := client.Connection.Request("GET", "/api/status", nil, nil)
+	code, result, err := client.Connection.Request("GET", "/api/status", nil, nil, nil)
 	if err != nil || code >= 400 {
 		return fmt.Errorf("HTTP GET request to /api/status fails: %v. Response: %s.",
 			err, truncateString(result))
@@ -227,7 +233,7 @@ func (client *Client) ImportJSON(url string, params url.Values, jsonBody map[str
 		return fmt.Errorf("fail to marshal the json content: %v", err)
 	}
 
-	statusCode, response, err := client.Connection.Request("POST", url, params, bytes.NewBuffer(body))
+	statusCode, response, err := client.Connection.Request("POST", url, params, nil, bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("%v. Response: %s", err, truncateString(response))
 	}

@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -30,6 +31,7 @@ func ConfigFromURL(kibanaURL string) (*kibana.Config, error) {
 		username = data.User.Username()
 		password, _ = data.User.Password()
 	}
+
 	return &kibana.Config{
 		Protocol: data.Scheme,
 		Host:     data.Host,
@@ -53,14 +55,14 @@ func NewClient(cfg *kibana.Config) (*Client, error) {
 
 // do a request to the API and unmarshall the message, error if anything fails
 func (c *Client) request(method, extraPath string,
-	params common.MapStr, message interface{}) (int, error) {
+	params common.MapStr, headers http.Header, message interface{}) (int, error) {
 
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
 		return 400, err
 	}
 
-	statusCode, result, err := c.client.Request(method, extraPath, nil, bytes.NewBuffer(paramsJSON))
+	statusCode, result, err := c.client.Request(method, extraPath, nil, headers, bytes.NewBuffer(paramsJSON))
 	if err != nil {
 		return statusCode, err
 	}
