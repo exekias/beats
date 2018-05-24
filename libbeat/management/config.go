@@ -53,6 +53,7 @@ func (c *Config) Save() error {
 	}
 
 	// write temporary file first
+	// TODO this should be owned by the beats user, ensure that
 	tempFile := path + ".new"
 	f, err := os.OpenFile(tempFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
