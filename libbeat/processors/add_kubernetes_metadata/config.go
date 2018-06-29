@@ -31,11 +31,9 @@ type kubeAnnotatorConfig struct {
 	SyncPeriod time.Duration `config:"sync_period"`
 	// Annotations are kept after pod is removed, until they haven't been accessed
 	// for a full `cleanup_timeout`:
-	CleanupTimeout  time.Duration `config:"cleanup_timeout"`
-	Indexers        PluginConfig  `config:"indexers"`
-	Matchers        PluginConfig  `config:"matchers"`
-	DefaultMatchers Enabled       `config:"default_matchers"`
-	DefaultIndexers Enabled       `config:"default_indexers"`
+	CleanupTimeout time.Duration `config:"cleanup_timeout"`
+	Indexers       PluginConfig  `config:"indexers"`
+	Matchers       PluginConfig  `config:"matchers"`
 }
 
 type Enabled struct {
@@ -46,10 +44,73 @@ type PluginConfig []map[string]common.Config
 
 func defaultKubernetesAnnotatorConfig() kubeAnnotatorConfig {
 	return kubeAnnotatorConfig{
-		InCluster:       true,
-		SyncPeriod:      1 * time.Second,
-		CleanupTimeout:  60 * time.Second,
-		DefaultMatchers: Enabled{true},
-		DefaultIndexers: Enabled{true},
+		InCluster:      true,
+		SyncPeriod:     1 * time.Second,
+		CleanupTimeout: 60 * time.Second,
+	}
+}
+
+func defaultKubernetesAnnotatorConfigMetricbeat() kubeAnnotatorConfig {
+	config := defaultKubernetesAnnotatorConfig()
+	empty := common.NewConfig()
+	config.Indexers = PluginConfig{
+		{
+			IPPortIndexerName: *empty,
+		},
+	}
+
+	//Add field matcher with field to lookup as metricset.host
+	fieldCfg, err := common.NewConfigFrom(map[string]interface{}{
+		"lookup_fields": []string{"metricset.host"},
+	})
+	if err == nil {
+		config.Matchers = PluginConfig{
+			{
+				FieldMatcherName: *fieldCfg,
+			},
+		}
+	}
+}
+
+func defaultKubernetesAnnotatorConfigFilebeat() kubeAnnotatorConfig {
+	config := defaultKubernetesAnnotatorConfig()
+	empty := common.NewConfig()
+	config.Indexers = PluginConfig{
+		{
+			ContainerIndexerName: *empty,
+		},
+	}
+
+	//Add a log path matcher which can extract container ID from the "source" field.
+	fieldCfg, err := common.NewConfigFrom(config)
+	if err == nil {
+		config.Matchers = PluginConfig{
+			{
+				// XXX this symbol is only available in filebeat, this won't compile:
+				LogPathMatcherName: *empty,
+			},
+		}
+	}
+}
+
+func defaultKubernetesAnnotatorConfigPacketbeat() kubeAnnotatorConfig {
+	config := defaultKubernetesAnnotatorConfig()
+	empty := common.NewConfig()
+	config.Indexers = PluginConfig{
+		{
+			IPPortIndexerName: *empty,
+		},
+	}
+
+	//Add field matcher with field to lookup ip:port pairs
+	formatCfg, err := common.NewConfigFrom(map[string]interface{}{
+		"format": "%{[ip]}:%{[port]}",
+	})
+	if err == nil {
+		config.Matchers = PluginConfig{
+			{
+				FieldFormatMatcherName: *formatCfg,
+			},
+		}
 	}
 }

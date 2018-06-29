@@ -65,24 +65,6 @@ func newKubernetesAnnotator(cfg *common.Config) (processors.Processor, error) {
 		return nil, err
 	}
 
-	//Load default indexer configs
-	if config.DefaultIndexers.Enabled == true {
-		Indexing.RLock()
-		for key, cfg := range Indexing.GetDefaultIndexerConfigs() {
-			config.Indexers = append(config.Indexers, map[string]common.Config{key: cfg})
-		}
-		Indexing.RUnlock()
-	}
-
-	//Load default matcher configs
-	if config.DefaultMatchers.Enabled == true {
-		Indexing.RLock()
-		for key, cfg := range Indexing.GetDefaultMatcherConfigs() {
-			config.Matchers = append(config.Matchers, map[string]common.Config{key: cfg})
-		}
-		Indexing.RUnlock()
-	}
-
 	metaGen, err := kubernetes.NewMetaGenerator(cfg)
 	if err != nil {
 		return nil, err
