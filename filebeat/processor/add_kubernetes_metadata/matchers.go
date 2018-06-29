@@ -28,13 +28,6 @@ import (
 
 func init() {
 	add_kubernetes_metadata.Indexing.AddMatcher(LogPathMatcherName, newLogsPathMatcher)
-	cfg := common.NewConfig()
-
-	//Add a container indexer config by default.
-	add_kubernetes_metadata.Indexing.AddDefaultIndexerConfig(add_kubernetes_metadata.ContainerIndexerName, *cfg)
-
-	//Add a log path matcher which can extract container ID from the "source" field.
-	add_kubernetes_metadata.Indexing.AddDefaultMatcherConfig(LogPathMatcherName, *cfg)
 }
 
 const LogPathMatcherName = "logs_path"
