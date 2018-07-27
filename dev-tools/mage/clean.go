@@ -24,6 +24,7 @@ import (
 // DefaultCleanPaths specifies a list of files or paths to recursively delete.
 // The values may contain variables and will be expanded at the time of use.
 var DefaultCleanPaths = []string{
+	"../x-pack/{{.BeatName}}/build",
 	"build",
 	"docker-compose.yml.lock",
 	"{{.BeatName}}",

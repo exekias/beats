@@ -63,6 +63,13 @@ func WithTarget(target string) func(params *crossBuildParams) {
 	}
 }
 
+// WithXPack specifies the mage target should also build an X-Pack version
+func WithXPack() func(params *crossBuildParams) {
+	return func(params *crossBuildParams) {
+		params.WithXPack = true
+	}
+}
+
 // Serially causes each cross-build target to be executed serially instead of
 // in parallel.
 func Serially() func(params *crossBuildParams) {
@@ -75,6 +82,7 @@ type crossBuildParams struct {
 	Platforms BuildPlatformList
 	Target    string
 	Serial    bool
+	WithXPack bool
 }
 
 // CrossBuild executes a given build target once for each target platform.
@@ -99,19 +107,25 @@ func CrossBuild(options ...CrossBuildOption) error {
 
 	log.Println("crossBuild: Platform list =", params.Platforms)
 	var deps []interface{}
+	xpack := []bool{false}
+	if params.WithXPack {
+		xpack = append(xpack, true)
+	}
 	for _, buildPlatform := range params.Platforms {
 		if !buildPlatform.Flags.CanCrossBuild() {
 			return fmt.Errorf("unsupported cross build platform %v", buildPlatform.Name)
 		}
 
-		builder := GolangCrossBuilder{buildPlatform.Name, params.Target}
-		if params.Serial {
-			if err := builder.Build(); err != nil {
-				return errors.Wrapf(err, "failed cross-building target=%v for platform=%v",
-					params.Target, buildPlatform.Name)
+		for _, xpack := range xpack {
+			builder := GolangCrossBuilder{buildPlatform.Name, params.Target, xpack}
+			if params.Serial {
+				if err := builder.Build(); err != nil {
+					return errors.Wrapf(err, "failed cross-building target=%v for platform=%v",
+						params.Target, buildPlatform.Name)
+				}
+			} else {
+				deps = append(deps, builder.Build)
 			}
-		} else {
-			deps = append(deps, builder.Build)
 		}
 	}
 
@@ -166,6 +180,7 @@ func crossBuildImage(platform string) (string, error) {
 type GolangCrossBuilder struct {
 	Platform string
 	Target   string
+	XPack    bool
 }
 
 // Build executes the build inside of Docker.
@@ -179,8 +194,14 @@ func (b GolangCrossBuilder) Build() error {
 
 	mountPoint := filepath.ToSlash(filepath.Join("/go", "src", repoInfo.RootImportPath))
 	workDir := mountPoint
+	buildCmd := "build/mage-linux-amd64"
 	if repoInfo.SubDir != "" {
-		workDir = filepath.ToSlash(filepath.Join(workDir, repoInfo.SubDir))
+		if b.XPack {
+			workDir = filepath.ToSlash(filepath.Join(workDir, "x-pack", repoInfo.SubDir))
+			buildCmd = filepath.Join("..", "..", repoInfo.SubDir, buildCmd)
+		} else {
+			workDir = filepath.ToSlash(filepath.Join(workDir, repoInfo.SubDir))
+		}
 	}
 
 	dockerRun := sh.RunCmd("docker", "run")
@@ -206,7 +227,7 @@ func (b GolangCrossBuilder) Build() error {
 		"-v", repoInfo.RootDir+":"+mountPoint,
 		"-w", workDir,
 		image,
-		"--build-cmd", "build/mage-linux-amd64 "+b.Target,
+		"--build-cmd", buildCmd+" "+b.Target,
 		"-p", b.Platform,
 	)
 

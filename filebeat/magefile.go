@@ -53,7 +53,7 @@ func BuildGoDaemon() error {
 
 // CrossBuild cross-builds the beat for all target platforms.
 func CrossBuild() error {
-	return mage.CrossBuild()
+	return mage.CrossBuild(mage.WithXPack())
 }
 
 // CrossBuildGoDaemon cross-builds the go-daemon binary using Docker.
