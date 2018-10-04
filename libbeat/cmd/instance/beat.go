@@ -304,6 +304,7 @@ func (b *Beat) createBeater(bt beat.Creator) (beat.Beater, error) {
 	}
 
 	debugf("Initializing output plugins")
+	outRequired := !b.ConfigManager.Enabled()
 	pipeline, err := pipeline.Load(b.Info,
 		pipeline.Monitors{
 			Metrics:   reg,
@@ -311,7 +312,8 @@ func (b *Beat) createBeater(bt beat.Creator) (beat.Beater, error) {
 			Logger:    logp.L().Named("publisher"),
 		},
 		b.Config.Pipeline,
-		b.Config.Output)
+		b.Config.Output,
+		outRequired)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing publisher: %+v", err)
 	}
