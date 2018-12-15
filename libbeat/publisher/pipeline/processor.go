@@ -22,6 +22,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/mitchellh/hashstructure"
+
+	"github.com/elastic/beats/libbeat/asset"
+
 	"github.com/elastic/beats/libbeat/beat"
 	"github.com/elastic/beats/libbeat/common"
 	"github.com/elastic/beats/libbeat/logp"
@@ -123,6 +127,9 @@ func newProcessorPipeline(
 
 	// setup 7: pipeline processors list
 	processors.add(global.processors)
+
+	// setup 8: time series metadata
+	processors.add(makeTimeSeriesProcessor(info.Beat))
 
 	// setup 9: debug print final event (P)
 	if logp.IsDebug("publish") {
@@ -273,6 +280,73 @@ func makeAddFieldsProcessor(name string, fields common.MapStr, copy bool) *proce
 	}
 
 	return newAnnotateProcessor(name, fn)
+}
+
+func makeTimeSeriesProcessor(beatName string) *processorFn {
+	fieldsYAML, err := asset.GetFields(beatName)
+	if err != nil {
+		// TODO get fields outside this function
+		panic(err)
+	}
+
+	fields, err := common.NewFieldsFromYAML(fieldsYAML)
+	if err != nil {
+		panic(err)
+	}
+
+	allDimensions := map[string]interface{}{}
+	extractDimensions("", allDimensions, fields)
+
+	fn := func(event *beat.Event) {
+		if len(allDimensions) > 0 {
+			instanceFields := common.MapStr{}
+			// map all dimensions & values
+			for k, v := range event.Fields.Flatten() {
+				if _, ok := allDimensions[k]; ok {
+					instanceFields[k] = v
+				}
+			}
+
+			h, err := hashstructure.Hash(instanceFields, nil)
+			if err != nil {
+				// TODO handle this
+				panic(err)
+			}
+
+			var dimensions []string
+			for k := range instanceFields {
+				dimensions = append(dimensions, k)
+			}
+
+			event.Fields["ts"] = common.MapStr{
+				"instance":   h,
+				"dimensions": dimensions,
+			}
+		}
+	}
+	return newAnnotateProcessor("timeseries", fn)
+}
+
+func extractDimensions(prefix string, dimensions map[string]interface{}, fields common.Fields) {
+	for _, f := range fields {
+		name := f.Name
+		if prefix != "" {
+			name = prefix + "." + name
+		}
+
+		if len(f.Fields) > 0 {
+			extractDimensions(name, dimensions, f.Fields)
+			continue
+		}
+
+		if f.Dimension == nil {
+			if f.Type == "keyword" {
+				dimensions[name] = nil
+			}
+		} else if *f.Dimension {
+			dimensions[name] = nil
+		}
+	}
 }
 
 func makeAddDynMetaProcessor(

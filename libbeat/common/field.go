@@ -53,6 +53,7 @@ type Field struct {
 	CopyTo                string      `config:"copy_to"`
 	IgnoreAbove           int         `config:"ignore_above"`
 	AliasPath             string      `config:"path"`
+	Dimension             *bool       `config:"dimension"`
 
 	// Kibana specific
 	Analyzed     *bool  `config:"analyzed"`
@@ -60,6 +61,7 @@ type Field struct {
 	Searchable   *bool  `config:"searchable"`
 	Aggregatable *bool  `config:"aggregatable"`
 	Script       string `config:"script"`
+
 	// Kibana params
 	Pattern              string              `config:"pattern"`
 	InputFormat          string              `config:"input_format"`
@@ -216,4 +218,23 @@ func (f Fields) getKeys(namespace string) []string {
 	}
 
 	return keys
+}
+
+// NewFieldsFromYAML reads the given YAML and parses it into a
+// Fields structure
+func NewFieldsFromYAML(data []byte) (Fields, error) {
+	var keys []Field
+
+	cfg, err := yaml.NewConfig(data)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Unpack(&keys)
+
+	fields := Fields{}
+
+	for _, key := range keys {
+		fields = append(fields, key.Fields...)
+	}
+	return fields, nil
 }
