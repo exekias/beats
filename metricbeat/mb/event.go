@@ -58,8 +58,9 @@ func (e *Event) BeatEvent(module, metricSet string, modifiers ...EventModifier) 
 	}
 
 	b := beat.Event{
-		Timestamp: e.Timestamp,
-		Fields:    e.RootFields,
+		Timestamp:  e.Timestamp,
+		Fields:     e.RootFields,
+		TimeSeries: true,
 	}
 
 	if len(e.ModuleFields) > 0 {

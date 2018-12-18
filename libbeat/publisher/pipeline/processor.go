@@ -22,15 +22,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mitchellh/hashstructure"
-
-	"github.com/elastic/beats/libbeat/asset"
-
 	"github.com/elastic/beats/libbeat/beat"
 	"github.com/elastic/beats/libbeat/common"
 	"github.com/elastic/beats/libbeat/logp"
 	"github.com/elastic/beats/libbeat/outputs/codec/json"
 	"github.com/elastic/beats/libbeat/processors"
+	"github.com/elastic/beats/libbeat/processors/timeseries"
 )
 
 type program struct {
@@ -58,8 +55,9 @@ type processorFn struct {
 //  6. (C) client processors list
 //  7. (P) add beats metadata
 //  8. (P) pipeline processors list
-//  9. (P) (if publish/debug enabled) log event
-// 10. (P) (if output disabled) dropEvent
+//  9. (P) timeseries mangling
+//  10. (P) (if publish/debug enabled) log event
+//  11. (P) (if output disabled) dropEvent
 func newProcessorPipeline(
 	info beat.Info,
 	global pipelineProcessors,
@@ -117,26 +115,28 @@ func newProcessorPipeline(
 		processors.add(makeAddDynMetaProcessor("dynamicFields", config.DynamicFields, checkCopy))
 	}
 
-	// setup 5: client processor list
+	// setup 6: client processor list
 	processors.add(localProcessors)
 
-	// setup 6: add beats and host metadata
+	// setup 7: add beats and host metadata
 	if meta := global.builtinMeta; len(meta) > 0 {
 		processors.add(makeAddFieldsProcessor("beatsMeta", meta, needsCopy))
 	}
 
-	// setup 7: pipeline processors list
+	// setup 8: pipeline processors list
 	processors.add(global.processors)
 
-	// setup 8: time series metadata
-	processors.add(makeTimeSeriesProcessor(info.Beat))
+	// setup 9: time series metadata
+	timeseriesProcessor, err := timeseries.NewTimeSeriesProcessor(info.Beat)
+	logp.Err("Error initializating time series processor: %s", err)
+	processors.add(timeseriesProcessor)
 
-	// setup 9: debug print final event (P)
+	// setup 10: debug print final event (P)
 	if logp.IsDebug("publish") {
 		processors.add(debugPrintProcessor(info))
 	}
 
-	// setup 10: drop all events if outputs are disabled (P)
+	// setup 11: drop all events if outputs are disabled (P)
 	if global.disabled {
 		processors.add(dropDisabledProcessor)
 	}
@@ -280,73 +280,6 @@ func makeAddFieldsProcessor(name string, fields common.MapStr, copy bool) *proce
 	}
 
 	return newAnnotateProcessor(name, fn)
-}
-
-func makeTimeSeriesProcessor(beatName string) *processorFn {
-	fieldsYAML, err := asset.GetFields(beatName)
-	if err != nil {
-		// TODO get fields outside this function
-		panic(err)
-	}
-
-	fields, err := common.NewFieldsFromYAML(fieldsYAML)
-	if err != nil {
-		panic(err)
-	}
-
-	allDimensions := map[string]interface{}{}
-	extractDimensions("", allDimensions, fields)
-
-	fn := func(event *beat.Event) {
-		if len(allDimensions) > 0 {
-			instanceFields := common.MapStr{}
-			// map all dimensions & values
-			for k, v := range event.Fields.Flatten() {
-				if _, ok := allDimensions[k]; ok {
-					instanceFields[k] = v
-				}
-			}
-
-			h, err := hashstructure.Hash(instanceFields, nil)
-			if err != nil {
-				// TODO handle this
-				panic(err)
-			}
-
-			var dimensions []string
-			for k := range instanceFields {
-				dimensions = append(dimensions, k)
-			}
-
-			event.Fields["ts"] = common.MapStr{
-				"instance":   h,
-				"dimensions": dimensions,
-			}
-		}
-	}
-	return newAnnotateProcessor("timeseries", fn)
-}
-
-func extractDimensions(prefix string, dimensions map[string]interface{}, fields common.Fields) {
-	for _, f := range fields {
-		name := f.Name
-		if prefix != "" {
-			name = prefix + "." + name
-		}
-
-		if len(f.Fields) > 0 {
-			extractDimensions(name, dimensions, f.Fields)
-			continue
-		}
-
-		if f.Dimension == nil {
-			if f.Type == "keyword" {
-				dimensions[name] = nil
-			}
-		} else if *f.Dimension {
-			dimensions[name] = nil
-		}
-	}
 }
 
 func makeAddDynMetaProcessor(

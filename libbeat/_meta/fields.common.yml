@@ -37,3 +37,6 @@
           type: keyword
           description: >
             Error type.
+
+    - name: ts.instance
+      type: keyword

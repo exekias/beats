@@ -2503,6 +2503,13 @@ Error type.
 
 --
 
+*`ts.instance`*::
++
+--
+type: keyword
+
+--
+
 [[exported-fields-cloud]]
 == Cloud provider metadata fields
 

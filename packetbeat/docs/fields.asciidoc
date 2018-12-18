@@ -507,6 +507,13 @@ Error type.
 
 --
 
+*`ts.instance`*::
++
+--
+type: keyword
+
+--
+
 [[exported-fields-cassandra]]
 == Cassandra fields
 

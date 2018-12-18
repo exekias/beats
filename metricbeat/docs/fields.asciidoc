@@ -876,6 +876,13 @@ Error type.
 
 --
 
+*`ts.instance`*::
++
+--
+type: keyword
+
+--
+
 [[exported-fields-ceph]]
 == Ceph fields
 
